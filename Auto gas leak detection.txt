@@ -1,0 +1,80 @@
+// Include necessary libraries
+#include <Servo.h>
+#include <SoftwareSerial.h>
+
+// Define pin numbers
+#define GAS_SENSOR_PIN A0   // Analog pin for gas sensor
+#define BUZZER_PIN 2        // Digital pin for buzzer
+#define SERVO_PIN 9         // Digital pin for servo motor
+#define GSM_TX_PIN 4        // Digital pin for GSM module TX
+#define GSM_RX_PIN 5        // Digital pin for GSM module RX
+
+// Define gas threshold
+#define GAS_THRESHOLD 100   // Threshold for gas detection in ppm
+
+// Initialize objects
+Servo myServo;             // Create a servo object
+SoftwareSerial gsmSerial(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(9600);
+  gsmSerial.begin(9600); // Start GSM serial communication
+  
+  // Initialize pins
+  pinMode(GAS_SENSOR_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(SERVO_PIN, OUTPUT);
+
+  // Attach servo to pin
+  myServo.attach(SERVO_PIN);
+}
+
+void loop() {
+  // Read gas sensor value
+  int gasValue = analogRead(GAS_SENSOR_PIN);
+  
+  // Check for gas leakage
+  if (gasValue >= GAS_THRESHOLD) {
+    // Gas leakage detected
+    activateAlarm();
+    sendSMS();
+    rotateServo();
+  } else {
+    // No gas leakage
+    deactivateAlarm();
+  }
+  
+  // Delay for stability
+  delay(1000); // Adjust as needed
+}
+
+// Function to activate alarm (buzzer)
+void activateAlarm() {
+  Serial.println("Gas leakage detected!");
+  digitalWrite(BUZZER_PIN, HIGH);  // Turn on buzzer
+}
+
+// Function to deactivate alarm
+void deactivateAlarm() {
+  digitalWrite(BUZZER_PIN, LOW);   // Turn off buzzer
+}
+
+// Function to rotate servo
+void rotateServo() {
+  myServo.write(120);   // Rotate the servo to a position
+  delay(1000);          // Wait for 1 second
+  myServo.detach();     // Stop the servo
+}
+
+// Function to send SMS using GSM module
+void sendSMS() {
+  gsmSerial.println("AT+CMGF=1");               // Set SMS mode to text
+  delay(1000);
+  gsmSerial.println("AT+CMGS=\"+1234567890\""); // Replace with phone number
+  delay(1000);
+  gsmSerial.print("Gas leakage detected!");     // SMS content
+  delay(100);
+  gsmSerial.println((char)26);                  // End of message
+  delay(1000);
+}
