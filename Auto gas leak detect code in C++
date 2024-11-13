@@ -1,0 +1,77 @@
+
+#include <Servo.h>
+#include <SoftwareSerial.h>
+
+
+#define GAS_SENSOR_PIN A0   
+#define BUZZER_PIN 2        
+#define SERVO_PIN 9         
+#define GSM_TX_PIN 4        
+#define GSM_RX_PIN 5  
+
+#define GAS_THRESHOLD 100 
+
+Servo myServo;            
+SoftwareSerial gsmSerial(GSM_RX_PIN, GSM_TX_PIN);
+
+void setup() {
+
+  Serial.begin(9600);
+  gsmSerial.begin(9600); 
+  
+
+  pinMode(GAS_SENSOR_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(SERVO_PIN, OUTPUT);
+
+
+  myServo.attach(SERVO_PIN);
+}
+
+void loop() {
+  // Read gas sensor value
+  int gasValue = analogRead(GAS_SENSOR_PIN);
+  
+  // Check for gas leakage
+  if (gasValue >= GAS_THRESHOLD) {
+    // Gas leakage detected
+    activateAlarm();
+    sendSMS();
+    rotateServo();
+  } else {
+    // No gas leakage
+    deactivateAlarm();
+  }
+  
+  // Delay for stability
+  delay(1000); 
+
+
+void activateAlarm() {
+  Serial.println("Gas leakage detected!");
+  digitalWrite(BUZZER_PIN, HIGH);  // Turn on buzzer
+}
+
+// Function to deactivate alarm
+void deactivateAlarm() {
+  digitalWrite(BUZZER_PIN, LOW); 
+}
+
+
+void rotateServo() {
+  myServo.write(120);  
+  delay(1000);          
+  myServo.detach();     
+}
+
+
+void sendSMS() {
+  gsmSerial.println("AT+CMGF=1");              
+  delay(1000);
+  gsmSerial.println("AT+CMGS=\"+1234567890\"");
+  delay(1000);
+  gsmSerial.print("Gas leakage detected!");   
+  delay(100);
+  gsmSerial.println((char)26);               
+  delay(1000);
+}
